@@ -1,13 +1,10 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.10)
+
+# Set the project name
 project(EX2_OS)
 
-set(CMAKE_CXX_STANDARD 14)
+# Add the executable
+add_executable(EX2_OS demo_jmp.c
 
-include_directories(.)
 
-add_executable(EX2_OS
-        demo_itimer.c
-        demo_jmp.c
-        demo_singInt_handler.c
-        uthreads.cpp
-        uthreads.h)
+        )

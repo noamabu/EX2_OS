@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
-
+#include <signal.h>
+#include <unistd.h>
 
 void catch_int(int sigNum)
 {
