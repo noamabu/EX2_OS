@@ -4,7 +4,58 @@ cmake_minimum_required(VERSION 3.10)
 project(EX2_OS)
 
 # Add the executable
-add_executable(EX2_OS demo_jmp.c
+add_executable(EX2_OS
+        ddd.cpp
+        uthreads.cpp
+        demo_jmp.c
+)
 
 
-        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
