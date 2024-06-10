@@ -149,7 +149,7 @@ void PassToNextThread(int tid=-1, bool terminate=false) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -189,7 +189,7 @@ int uthread_init(int quantum_usecs) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         return ERROR;
     }
-    Thread mainThread = Thread(nullptr, false, 1, 0); //TODO check if null its ok
+    Thread mainThread = Thread(NULL, false, 1, 0); //TODO check if null its ok
     threadGlobals.THREAD_QUANTUM_DURATION = quantum_usecs;
     threadGlobals.threads.insert({0, mainThread});
     threadGlobals.tidManager.allocateTid();
@@ -218,7 +218,7 @@ int uthread_spawn(thread_entry_point entry_point) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         return ERROR;
     }
@@ -244,7 +244,7 @@ int uthread_spawn(thread_entry_point entry_point) {
     sigemptyset(&threadGlobals.env[tid]->__saved_mask);
     threadGlobals.threads.insert({tid, newThread});
     threadGlobals.readyThreadQueue.push(tid);
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
 }
 
@@ -253,7 +253,7 @@ int uthread_terminate(int tid) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         return ERROR;
     }
@@ -279,7 +279,7 @@ int uthread_terminate(int tid) {
         PassToNextThread(tid, true);
     }
 
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
 }
 
@@ -287,7 +287,7 @@ int uthread_block(int tid){
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -308,7 +308,7 @@ int uthread_block(int tid){
             threadGlobals.threads.erase(tid); //TODO check if correct
         }
     }
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
 }
 
@@ -316,7 +316,7 @@ int uthread_resume(int tid){
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -328,7 +328,7 @@ int uthread_resume(int tid){
         threadGlobals.threads.find(tid)->second.setIsBlocked(false);
         threadGlobals.readyThreadQueue.push(tid);
     }
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
 }
 
