@@ -24,7 +24,7 @@
 #define THREAD_TERMINATE_SELF_ERROR "system error: thread cannot terminate itself"
 #define THREAD_TERMINATE_SELF_ERROR "system error: thread cannot terminate itself"
 #define THREAD_UNEXISTS_ERROR "system error: thread does not exist"
-#define MAIN_THREAD_BLOCKING_ERROR "system error: main thread cant be blocked"
+#define MAIN_THREAD_BLOCKING_ERROR "system error: thread 0 cannot be blocked"
 #define ERROR -1;
 
 
@@ -189,7 +189,7 @@ int uthread_init(int quantum_usecs) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         return ERROR;
     }
-    Thread mainThread = Thread(NULL, false, 1, 0); //TODO check if null its ok
+    Thread mainThread = Thread(NULL, false, 1, 0);
     threadGlobals.THREAD_QUANTUM_DURATION = quantum_usecs;
     threadGlobals.threads.insert({0, mainThread});
     threadGlobals.tidManager.allocateTid();
@@ -327,6 +327,24 @@ int uthread_resume(int tid){
     if (threadGlobals.threads.find(tid)->second.getIsBlocked()){
         threadGlobals.threads.find(tid)->second.setIsBlocked(false);
         threadGlobals.readyThreadQueue.push(tid);
+    }
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    return EXIT_SUCCESS;
+}
+
+int uthread_sleep(int num_quantums){
+    if (threadGlobals.tidOfCurrentThread == 0){
+        std::cerr << THREAD_SLEEP_ERROR << std::endl;
+        return ERROR;
+    }
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGALRM);
+    auto currentThread = threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second;
+    currentThread.setSleepTime(num_quantums + uthread_get_total_quantums());
+    threadGlobals.sleepingThread.push_back(threadGlobals.tidOfCurrentThread);
+    if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0){
+        PassToNextThread();
     }
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
