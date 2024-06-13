@@ -145,15 +145,6 @@ address_t translate_address(address_t addr)
 
 #endif
 
-bool valueExistsInQueue(std::queue<int> queue, const int& value) {
-    while (!queue.empty()) {
-        if (queue.front() == value) {
-            return true;
-        }
-        queue.pop();
-    }
-    return false;
-}
 
 void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
     sigset_t mask;
@@ -195,9 +186,7 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
 void timer_handler(int sig) {
     // Exit early if the signal is not 26
     if (sig != 26) return;
-    if (!valueExistsInQueue(threadGlobals.readyThreadQueue, threadGlobals.tidOfCurrentThread)) {
-        threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
-    }
+    //threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
     // Save the current thread context and check if we just saved or restored
     if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0) {
         // If we just saved the context, switch to the next thread
