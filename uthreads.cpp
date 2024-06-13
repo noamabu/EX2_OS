@@ -103,7 +103,6 @@ typedef unsigned long address_t;
 #define JB_PC 7
 
 
-
 /* A translation is required when using an address of a variable.
    Use this as a black box in your code. */
 address_t translate_address(address_t addr) {
@@ -139,7 +138,7 @@ address_t translate_address(address_t addr)
 #endif
 
 
-void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
+void PassToNextThread(int tidToterminate = -1, bool terminate = false) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
@@ -147,20 +146,21 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (!terminate) {
+    if (!terminate && !threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.getIsBlocked()) {
         threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
     }
     threadGlobals.tidOfCurrentThread = threadGlobals.readyThreadQueue.front();
     threadGlobals.readyThreadQueue.pop();
-    threadGlobals.threadQuantumCounter++;
-    for (auto tid :threadGlobals.sleepingThread){
-        if (threadGlobals.threads.find(tid)->second.getSleepTime() == threadGlobals.threadQuantumCounter){
+    for (auto tid: threadGlobals.sleepingThread) {
+        if (threadGlobals.threads.find(tid)->second.getSleepTime() >= threadGlobals.threadQuantumCounter) {
             threadGlobals.threads.find(tid)->second.setSleepTime(0);
-            if (!threadGlobals.threads.find(tid)->second.getIsBlocked()){
+            threadGlobals.sleepingThread.remove(tid);
+            if (!threadGlobals.threads.find(tid)->second.getIsBlocked()) {
                 threadGlobals.readyThreadQueue.push(tid);
             }
         }
     }
+    threadGlobals.threadQuantumCounter++;
     // Configure the timer
     threadGlobals.timer.it_value.tv_sec = 0;
     threadGlobals.timer.it_value.tv_usec = threadGlobals.THREAD_QUANTUM_DURATION;
@@ -172,7 +172,7 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
     }
     sigprocmask(SIG_UNBLOCK, &mask, nullptr);
     threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.setThreadQuanta
-    (threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.getThreadQuanta() + 1);
+            (threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.getThreadQuanta() + 1);
     siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
 }
 
@@ -188,7 +188,6 @@ void timer_handler(int sig) {
 }
 
 
-
 int uthread_init(int quantum_usecs) {
     if (quantum_usecs <= 0) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
@@ -198,7 +197,7 @@ int uthread_init(int quantum_usecs) {
     threadGlobals.THREAD_QUANTUM_DURATION = quantum_usecs;
     threadGlobals.threads.insert({0, mainThread});
     threadGlobals.tidManager.allocateTid();
-    threadGlobals.threadQuantumCounter ++;
+    threadGlobals.threadQuantumCounter++;
     // Set the timer handler for SIGVTALRM
     threadGlobals.sa.sa_handler = &timer_handler;
     if (sigaction(SIGVTALRM, &threadGlobals.sa, NULL) < 0) {
@@ -237,7 +236,7 @@ int uthread_spawn(thread_entry_point entry_point) {
         std::cerr << THREAD_SLOT_ERROR << std::endl;
         return ERROR;
     }
-    char *stack = new (std::nothrow) char[STACK_SIZE];
+    char *stack = new(std::nothrow) char[STACK_SIZE];
     if (stack == nullptr) {
         std::cerr << MEMORY_ALLOC_ERROR << std::endl;
         return ERROR;
@@ -285,6 +284,7 @@ int uthread_terminate(int tid) {
     delete[] threadGlobals.threads.at(tid).getStack();
     threadGlobals.threads.erase(tid);
     removeTid(threadGlobals.readyThreadQueue, tid);
+    threadGlobals.sleepingThread.remove(tid);
     if (tid == threadGlobals.tidOfCurrentThread) {
         PassToNextThread(tid, true);
     }
@@ -293,7 +293,7 @@ int uthread_terminate(int tid) {
     return EXIT_SUCCESS;
 }
 
-int uthread_block(int tid){
+int uthread_block(int tid) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
@@ -301,28 +301,27 @@ int uthread_block(int tid){
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (threadGlobals.threads.find(tid) == threadGlobals.threads.end()){
+    if (threadGlobals.threads.find(tid) == threadGlobals.threads.end()) {
         std::cerr << THREAD_UNEXISTS_ERROR << std::endl;
         return ERROR;
     }
-    if (tid == 0){
+    if (tid == 0) {
         std::cerr << MAIN_THREAD_BLOCKING_ERROR << std::endl;
         return ERROR;
     }
     threadGlobals.threads.find(tid)->second.setIsBlocked(true);
-    if (tid == threadGlobals.tidOfCurrentThread){
-        if (sigsetjmp(threadGlobals.env[tid], 1) == 0){
+    if (tid == threadGlobals.tidOfCurrentThread) {
+        if (sigsetjmp(threadGlobals.env[tid], 1) == 0) {
             PassToNextThread();
         }
-        else{
-            threadGlobals.threads.erase(tid); //TODO check if correct
-        }
+    } else {
+        removeTid(threadGlobals.readyThreadQueue, tid); // remove the tid from the ready queue
     }
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
 }
 
-int uthread_resume(int tid){
+int uthread_resume(int tid) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
@@ -330,11 +329,11 @@ int uthread_resume(int tid){
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (threadGlobals.threads.find(tid) == threadGlobals.threads.end()){
+    if (threadGlobals.threads.find(tid) == threadGlobals.threads.end()) {
         std::cerr << THREAD_UNEXISTS_ERROR << std::endl;
         return ERROR;
     }
-    if (threadGlobals.threads.find(tid)->second.getIsBlocked()){
+    if (threadGlobals.threads.find(tid)->second.getIsBlocked()) {
         threadGlobals.threads.find(tid)->second.setIsBlocked(false);
         threadGlobals.readyThreadQueue.push(tid);
     }
@@ -342,8 +341,8 @@ int uthread_resume(int tid){
     return EXIT_SUCCESS;
 }
 
-int uthread_sleep(int num_quantums){
-    if (threadGlobals.tidOfCurrentThread == 0){
+int uthread_sleep(int num_quantums) {
+    if (threadGlobals.tidOfCurrentThread == 0) {
         std::cerr << THREAD_SLEEP_ERROR << std::endl;
         return ERROR;
     }
@@ -353,7 +352,7 @@ int uthread_sleep(int num_quantums){
     auto currentThread = threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second;
     currentThread.setSleepTime(num_quantums + uthread_get_total_quantums());
     threadGlobals.sleepingThread.push_back(threadGlobals.tidOfCurrentThread);
-    if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0){
+    if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0) {
         PassToNextThread();
     }
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -363,9 +362,11 @@ int uthread_sleep(int num_quantums){
 int uthread_get_tid() {
     return threadGlobals.tidOfCurrentThread;
 }
+
 int uthread_get_total_quantums() {
     return threadGlobals.threadQuantumCounter;
 }
+
 int uthread_get_quantums(int tid) {
     if (threadGlobals.threads.find(tid) == threadGlobals.threads.end()) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
@@ -386,4 +387,3 @@ void removeTid(std::queue<int> &q, int element) {
 
     q = tempQueue;
 }
-
