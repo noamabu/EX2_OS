@@ -153,14 +153,20 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-
     if (!terminate) {
         threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
     }
     threadGlobals.tidOfCurrentThread = threadGlobals.readyThreadQueue.front();
     threadGlobals.readyThreadQueue.pop();
     threadGlobals.threadQuantumCounter++;
-
+    for (auto tid :threadGlobals.sleepingThread){
+        if (threadGlobals.threads.find(tid)->second.getSleepTime() == threadGlobals.threadQuantumCounter){
+            threadGlobals.threads.find(tid)->second.setSleepTime(0);
+            if (!threadGlobals.threads.find(tid)->second.getIsBlocked()){
+                threadGlobals.readyThreadQueue.push(tid);
+            }
+        }
+    }
     // Configure the timer
     threadGlobals.timer.it_value.tv_sec = 0;
     threadGlobals.timer.it_value.tv_usec = threadGlobals.THREAD_QUANTUM_DURATION;
@@ -170,7 +176,6 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
         std::cerr << SIGNAL_ACTION_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-
     sigprocmask(SIG_UNBLOCK, &mask, nullptr);
     siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
 }
