@@ -5,9 +5,8 @@ project(EX2_OS)
 
 # Add the executable
 add_executable(EX2_OS
-        ddd.cpp
         uthreads.cpp
-        demo_jmp.c
+        test0_sanity.cpp
 )
 
 

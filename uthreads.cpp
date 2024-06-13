@@ -205,6 +205,7 @@ int uthread_init(int quantum_usecs) {
     threadGlobals.THREAD_QUANTUM_DURATION = quantum_usecs;
     threadGlobals.threads.insert({0, mainThread});
     threadGlobals.tidManager.allocateTid();
+    threadGlobals.threadQuantumCounter ++;
     // Set the timer handler for SIGVTALRM
     threadGlobals.sa.sa_handler = &timer_handler;
     if (sigaction(SIGVTALRM, &threadGlobals.sa, NULL) < 0) {
