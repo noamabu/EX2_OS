@@ -2,7 +2,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <map>
 #include <list>
 #include <algorithm>
 #include <ostream>
@@ -12,7 +11,6 @@
 #include <set>
 
 #include <queue>
-#include <string>
 #include <utility>
 
 #define MEMORY_ALLOC_ERROR "system error: memory allocation unsuccessful"
@@ -20,9 +18,6 @@
 #define SIGNAL_ACTION_ERROR "system error: signal handling failure"
 #define THREAD_SLOT_ERROR "system error: no available slot for new thread"
 #define THREAD_SLEEP_ERROR "system error: thread 0 cannot be put to sleep"
-#define THREAD_TERMINATE_ERROR "system error: thread 0 cannot be terminated"
-#define THREAD_TERMINATE_SELF_ERROR "system error: thread cannot terminate itself"
-#define THREAD_TERMINATE_SELF_ERROR "system error: thread cannot terminate itself"
 #define THREAD_UNEXISTS_ERROR "system error: thread does not exist"
 #define MAIN_THREAD_BLOCKING_ERROR "system error: thread 0 cannot be blocked"
 #define ERROR -1;
@@ -39,7 +34,6 @@ public:
 
     // Getters and Setters
     char *getStack() const { return stack; }
-    void setStack(char *stk) { stack = stk; }
 
     bool getIsBlocked() const { return isBlocked; }
     void setIsBlocked(bool blocked) { isBlocked = blocked; }
@@ -88,7 +82,6 @@ private:
 
 class ThreadGlobals {
 public:
-    // ThreadGlobals(int quantum_usecs) : THREAD_QUANTUM_DURATION(quantum_usecs) {}
     int THREAD_QUANTUM_DURATION;
     std::unordered_map<unsigned int, Thread> threads;
     sigjmp_buf env[MAX_THREAD_NUM];
@@ -244,7 +237,11 @@ int uthread_spawn(thread_entry_point entry_point) {
         std::cerr << THREAD_SLOT_ERROR << std::endl;
         return ERROR;
     }
-    char *stack = new char[STACK_SIZE];
+    char *stack = new (std::nothrow) char[STACK_SIZE];
+    if (stack == nullptr) {
+        std::cerr << MEMORY_ALLOC_ERROR << std::endl;
+        return ERROR;
+    }
     Thread newThread = Thread(stack, false, 0, 0);
 
     // initializes env[tid] to use the right stack, and to run from the function 'entry_point', when we'll use

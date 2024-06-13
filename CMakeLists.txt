@@ -7,6 +7,7 @@ project(EX2_OS)
 add_executable(EX2_OS
         uthreads.cpp
         test0_sanity.cpp
+#        test2_two_thread.cpp
 )
 
 
