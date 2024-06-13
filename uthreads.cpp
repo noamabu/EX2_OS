@@ -177,6 +177,8 @@ void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
         exit(EXIT_FAILURE);
     }
     sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.setThreadQuanta
+    (threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.getThreadQuanta() + 1);
     siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
 }
 
