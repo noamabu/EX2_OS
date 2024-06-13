@@ -145,7 +145,7 @@ address_t translate_address(address_t addr)
 
 #endif
 
-void PassToNextThread(int tid=-1, bool terminate=false) {
+void PassToNextThread(int tidToterminate=-1, bool terminate=false) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGALRM);
@@ -154,18 +154,25 @@ void PassToNextThread(int tid=-1, bool terminate=false) {
         exit(EXIT_FAILURE);
     }
 
-    if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0) {
-        if (!terminate) {
-            threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
-        }
-        threadGlobals.tidOfCurrentThread = threadGlobals.readyThreadQueue.front();
-        threadGlobals.readyThreadQueue.pop();
-        threadGlobals.threadQuantumCounter++;
-        siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
+    if (!terminate) {
+        threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
+    }
+    threadGlobals.tidOfCurrentThread = threadGlobals.readyThreadQueue.front();
+    threadGlobals.readyThreadQueue.pop();
+    threadGlobals.threadQuantumCounter++;
+
+    // Configure the timer
+    threadGlobals.timer.it_value.tv_sec = 0;
+    threadGlobals.timer.it_value.tv_usec = threadGlobals.THREAD_QUANTUM_DURATION;
+
+    // Start the timer and handle potential errors
+    if (setitimer(ITIMER_VIRTUAL, &threadGlobals.timer, NULL) != 0) {
+        std::cerr << SIGNAL_ACTION_ERROR << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
     sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
 }
 
 void timer_handler(int sig) {
