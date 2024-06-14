@@ -91,6 +91,7 @@ public:
     std::list<int> sleepingThread;
     struct sigaction sa = {0};
     struct itimerval timer;
+    int in_PassToNextThread = 0;
 };
 
 ThreadGlobals threadGlobals;
@@ -169,16 +170,25 @@ void PassToNextThread(int tidToterminate = -1, bool terminate = false) {
         std::cerr << SIGNAL_ACTION_ERROR << std::endl;
         exit(EXIT_FAILURE);
     }
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
     threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.setThreadQuanta
             (threadGlobals.threads.find(threadGlobals.tidOfCurrentThread)->second.getThreadQuanta() + 1);
+
+    if (terminate) {
+        if (threadGlobals.threads.find(tidToterminate) != threadGlobals.threads.end()) {
+            threadGlobals.tidManager.releaseTid(tidToterminate);
+            delete[] threadGlobals.threads.at(tidToterminate).getStack();
+            threadGlobals.threads.erase(tidToterminate);
+        }
+    }
+
+    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
     siglongjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1);
 }
 
 void timer_handler(int sig) {
-    // Exit early if the signal is not 26
-    if (sig != 26) return;
-    //threadGlobals.readyThreadQueue.push(threadGlobals.tidOfCurrentThread);
+    // Exit early if the signal is not SIGVTALRM
+    if (sig != SIGVTALRM) return;
+
     // Save the current thread context and check if we just saved or restored
     if (sigsetjmp(threadGlobals.env[threadGlobals.tidOfCurrentThread], 1) == 0) {
         // If we just saved the context, switch to the next thread
@@ -276,17 +286,17 @@ int uthread_terminate(int tid) {
         std::cerr << INVALID_INPUT_ERROR << std::endl;
         return ERROR;
     }
-    // if (tid == threadGlobals.tidOfCurrentThread) {
-    //     PassToNextThread(tid, true);
-    // }
-    threadGlobals.tidManager.releaseTid(tid);
-    delete[] threadGlobals.threads.at(tid).getStack();
-    threadGlobals.threads.erase(tid);
-    removeTid(threadGlobals.readyThreadQueue, tid);
-    threadGlobals.sleepingThread.remove(tid);
     if (tid == threadGlobals.tidOfCurrentThread) {
         PassToNextThread(tid, true);
     }
+    else {
+        threadGlobals.tidManager.releaseTid(tid);
+        delete[] threadGlobals.threads.at(tid).getStack();
+        threadGlobals.threads.erase(tid);
+        removeTid(threadGlobals.readyThreadQueue, tid);
+        threadGlobals.sleepingThread.remove(tid);
+    }
+
 
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     return EXIT_SUCCESS;
