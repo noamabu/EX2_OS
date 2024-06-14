@@ -9,9 +9,8 @@
 #include "uthreads.h"
 #include <memory>
 #include <set>
-
+#include <unordered_map>
 #include <queue>
-#include <utility>
 
 #define MEMORY_ALLOC_ERROR "system error: memory allocation unsuccessful"
 #define INVALID_INPUT_ERROR "system error: invalid input detected"
